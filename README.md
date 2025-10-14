@@ -45,10 +45,6 @@ KevinGuttormsen is an embedded system designed to fit inside a plush toy, levera
 
 Next steps: Integrate audio playback, add movement detection logic, and expand interactive features.
 
-## Contributing
-
-This project is meant to be fun and silly, but we take code quality and maintainability seriously. Contributions are welcome—please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ## License
 
 MIT License
