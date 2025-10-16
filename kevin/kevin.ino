@@ -39,6 +39,14 @@ int currentAlarmFileIndex = 0;
 const unsigned long MOVEMENT_TIMEOUT = 3000;  // 3 seconds
 const unsigned long MAX_ALARM_DURATION = 600000;  // 10 minutes
 
+// Wake word recording variables
+AudioInputI2S *audioInput;
+AudioFileSinkSD *audioSink;
+bool isRecordingWakeWord = false;
+unsigned long recordingStartTime = 0;
+const unsigned long RECORDING_DURATION = 2500;  // 2.5 seconds
+int wakeWordSampleCount = 0;
+
 // WiFi AP settings for kidnapped mode
 const char* apSSID = "JegErPingnappa";
 const char* apPassword = "Kevin";
@@ -73,6 +81,16 @@ void setup() {
 }
 
 void loop() {
+  // Handle wake word recording if active
+  if (isRecordingWakeWord) {
+    unsigned long currentTime = millis();
+    if (currentTime - recordingStartTime >= RECORDING_DURATION) {
+      stopWakeWordRecording();
+    }
+    delay(10);  // Short delay during recording
+    return;  // Don't process other logic during recording
+  }
+
   handleModeSwitching();
   handleButtonInputs();
 
@@ -161,6 +179,25 @@ void handleButtonInputs() {
   bool leftWingPressed = (digitalRead(LEFT_WING_BUTTON_PIN) == LOW);
   bool rightWingPressed = (digitalRead(RIGHT_WING_BUTTON_PIN) == LOW);
   bool beakPressed = (digitalRead(BEAK_BUTTON_PIN) == LOW);
+
+  // Check for wake word recording trigger: hold left leg button for 2 seconds
+  static unsigned long leftLegPressStart = 0;
+  static bool leftLegHeld = false;
+
+  if (leftLegPressed && !leftLegHeld) {
+    leftLegPressStart = millis();
+    leftLegHeld = true;
+  } else if (!leftLegPressed && leftLegHeld) {
+    leftLegHeld = false;
+    unsigned long pressDuration = millis() - leftLegPressStart;
+
+    // If held for 2+ seconds, start wake word recording
+    if (pressDuration >= 2000 && !isRecordingWakeWord) {
+      Serial.println("WAKE WORD RECORDING MODE ACTIVATED!");
+      startWakeWordRecording();
+      return;  // Don't process other button logic during recording
+    }
+  }
 
   // Check for disarm sequence: both leg buttons pressed simultaneously
   static bool disarmSequenceActive = false;
@@ -456,6 +493,60 @@ void playImmediateAlarm() {
   } else {
     Serial.println("Could not play immediate alarm - file not found");
   }
+}
+
+void startWakeWordRecording() {
+  Serial.println("Initializing wake word recording...");
+
+  // Initialize SD card if not already done
+  if (!SD_MMC.begin()) {
+    Serial.println("SD Card Mount Failed for wake word recording!");
+    return;
+  }
+
+  // Create wakeword_samples directory if it doesn't exist
+  if (!SD_MMC.exists("/wakeword_samples")) {
+    SD_MMC.mkdir("/wakeword_samples");
+    Serial.println("Created /wakeword_samples directory");
+  }
+
+  // Initialize audio input from microphones
+  audioInput = new AudioInputI2S();
+  audioInput->SetPinout(15, 16, 17);  // Adjust pins based on ESP32-S3 I2S microphone pins
+
+  // Generate filename for new sample
+  wakeWordSampleCount++;
+  char filename[32];
+  sprintf(filename, "/wakeword_samples/sample_%03d.wav", wakeWordSampleCount);
+
+  // Initialize audio sink for WAV file recording
+  audioSink = new AudioFileSinkSD(filename);
+
+  // Play "pling" sound to indicate recording start
+  Serial.println("Playing recording cue sound...");
+  // For now, just print - you would play a short tone here
+  Serial.println("PLING! Start saying 'Hei Kevin'...");
+
+  // Start recording
+  recordingStartTime = millis();
+  isRecordingWakeWord = true;
+
+  Serial.print("Recording to: ");
+  Serial.println(filename);
+}
+
+void stopWakeWordRecording() {
+  if (audioInput) {
+    delete audioInput;
+    audioInput = nullptr;
+  }
+  if (audioSink) {
+    delete audioSink;
+    audioSink = nullptr;
+  }
+
+  isRecordingWakeWord = false;
+  Serial.println("Wake word recording completed and saved!");
 }
 
 void playSound(const char* soundFile) {

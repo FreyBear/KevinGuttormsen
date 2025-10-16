@@ -77,17 +77,45 @@ The Plush Toy Security Device (PTSD) is an embedded system designed to fit insid
 	- WAV file playback and speaker output using `ESP8266Audio` library (`AudioFileSourceSD`, `AudioGeneratorWAV`, `AudioOutputI2S`)
 	- I2S pins used for speaker communication
 
+## On-Device Wake Word Recording System
+
+### Recording Trigger
+- **Activation:** Hold left leg button for 2 seconds
+- **Audio Cue:** Kevin plays "pling" sound to indicate recording start
+- **Duration:** Records for 2.5 seconds through built-in microphones
+- **Storage:** Automatic WAV file storage in `/wakeword_samples/` directory on SD card
+
+### Recording Process
+1. **Hold left leg button** for 2+ seconds
+2. **Kevin signals** with "pling" sound and "Start saying 'Hei Kevin'..." message
+3. **2.5 second recording** captures audio through ESP32-S3 microphones
+4. **Automatic saving** as numbered WAV files (sample_001.wav, sample_002.wav, etc.)
+5. **Confirmation** message when recording completes
+
+### Benefits of On-Device Recording
+- **Authentic audio environment** - captures real device acoustics and enclosure effects
+- **Easy data collection** - record from multiple people without external equipment
+- **Better training data** - includes actual usage distance and environmental factors
+- **Simplified workflow** - no need to transfer files between devices
+
+### Training Data Collection Workflow
+1. **Collect samples:** Use Kevin to record 1000+ samples from different speakers
+2. **Transfer files:** Copy WAV files from SD card to computer
+3. **ESP-IDF training:** Use collected samples to train custom "Hei Kevin" model
+4. **Model deployment:** Flash trained model back to Kevin for runtime use
+
 ## AI Implementation Roadmap (Arduino IDE Compatible)
 
 ### Phase 1: Current Arduino Code Enhancement
 - [x] Basic button and accelerometer functionality implemented
+- [x] On-device wake word recording system implemented
 - [ ] Add SD card support for audio file storage
 - [ ] Implement random audio file selection from directories
 - [ ] Integrate ESP8266Audio library for WAV playback
 
 ### Phase 2: Wake Word Development (One-time ESP-IDF Process)
 - [ ] Install ESP-IDF development environment (separate from Arduino)
-- [ ] Record 1000+ samples of "Hei Kevin" for training dataset
+- [ ] Record 1000+ samples of "Hei Kevin" using on-device recording system
 - [ ] Train custom wake word model using ESP-SR WakeNet tools
 - [ ] Export trained model for Arduino use
 - [ ] Test wake word detection accuracy
@@ -106,7 +134,7 @@ The Plush Toy Security Device (PTSD) is an embedded system designed to fit insid
 - [ ] Test Norwegian language compatibility
 
 ### Phase 5: Audio Response System
-- [ ] Create SD card directory structure: `/songs/`, `/jokes/`
+- [ ] Create SD card directory structure: `/songs/`, `/jokes/`, `/wakeword_samples/`
 - [ ] Implement random file selection algorithms
 - [ ] Add audio playback interruption for new commands
 - [ ] Test audio quality and synchronization
