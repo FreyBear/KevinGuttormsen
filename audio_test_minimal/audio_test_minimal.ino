@@ -1,9 +1,7 @@
-// Microphone and Speaker Test for ESP32-S3
-// Sequence: Beep -> Record 2 sec -> Beep -> Playback -> Repeat
-// Uses I2S for audio I/O
+// Minimal Microphone and Speaker Test for ESP32-S3
+// Diagnostic version to identify where the crash occurs
 
 #include <driver/i2s.h>
-#include <esp_heap_caps.h>
 
 // I2S Pin Configuration (from documentation)
 #define I2S_MCLK 12
@@ -11,7 +9,6 @@
 #define I2S_LRCK 14
 #define I2S_DOUT 15  // Speaker output
 #define I2S_DIN  16  // Microphone input
-#define PA_EN    9   // Speaker amplifier enable (EXIO9)
 
 // Audio Configuration
 #define SAMPLE_RATE 16000
@@ -20,7 +17,7 @@
 #define BEEP_FREQUENCY 1000  // Hz
 #define BEEP_DURATION 500    // ms
 
-// Audio buffer (stored in PSRAM or SRAM)
+// Audio buffer
 int16_t* audioBuffer = NULL;
 size_t bufferSize = 0;
 bool bufferValid = false;
@@ -33,41 +30,37 @@ void setup() {
   Serial.begin(115200);
   delay(2000);
   
-  Serial.println("\n=== Microphone and Speaker Test ===");
-  Serial.println("Sequence: Beep -> Record 2s -> Beep -> Playback -> Repeat");
-  
-  // Enable speaker amplifier
-  pinMode(PA_EN, OUTPUT);
-  digitalWrite(PA_EN, HIGH);
-  Serial.println("Speaker amplifier enabled");
+  Serial.println("\n=== Minimal Audio Test ===");
+  Serial.println("Step 1: Serial initialized");
   
   // Allocate audio buffer - try PSRAM first, then SRAM
   bufferSize = RECORD_SAMPLES * sizeof(int16_t);
-  Serial.printf("Attempting to allocate %d bytes for audio buffer...\n", bufferSize);
+  Serial.printf("Step 2: Attempting to allocate %d bytes for audio buffer...\n", bufferSize);
   
   // Try PSRAM first
   audioBuffer = (int16_t*)heap_caps_malloc(bufferSize, MALLOC_CAP_SPIRAM);
   if (audioBuffer != NULL) {
-    Serial.println("Audio buffer allocated in PSRAM");
+    Serial.println("Step 3: Audio buffer allocated in PSRAM");
     bufferValid = true;
   } else {
     // Fall back to SRAM
-    Serial.println("PSRAM allocation failed, trying SRAM...");
+    Serial.println("Step 3: PSRAM allocation failed, trying SRAM...");
     audioBuffer = (int16_t*)malloc(bufferSize);
     if (audioBuffer != NULL) {
-      Serial.println("Audio buffer allocated in SRAM");
+      Serial.println("Step 4: Audio buffer allocated in SRAM");
       bufferValid = true;
     } else {
-      Serial.println("ERROR: Failed to allocate audio buffer in both PSRAM and SRAM!");
+      Serial.println("Step 4: ERROR - Failed to allocate audio buffer!");
       Serial.printf("Available heap: %d bytes\n", ESP.getFreeHeap());
       bufferValid = false;
     }
   }
   
   // Initialize I2S for playback (TX mode)
+  Serial.println("Step 5: Initializing I2S for playback...");
   initI2SPlayback();
   
-  Serial.println("Setup complete. Starting test loop...\n");
+  Serial.println("Step 6: Setup complete. Starting test loop...\n");
 }
 
 void loop() {
@@ -97,11 +90,15 @@ void loop() {
 
 // Initialize I2S for playback (speaker output)
 void initI2SPlayback() {
+  Serial.println("  - Uninstalling any existing I2S driver...");
+  
   // Stop any existing I2S if it was installed
   if (i2sInstalled) {
     i2s_driver_uninstall(i2s_port);
     i2sInstalled = false;
   }
+  
+  Serial.println("  - Creating I2S configuration...");
   
   // I2S configuration for playback
   i2s_config_t i2s_config = {
@@ -127,29 +124,35 @@ void initI2SPlayback() {
     .data_in_num = I2S_PIN_NO_CHANGE
   };
   
+  Serial.println("  - Installing I2S driver...");
   esp_err_t err = i2s_driver_install(i2s_port, &i2s_config, 0, NULL);
   if (err != ESP_OK) {
-    Serial.printf("ERROR: Failed to install I2S driver for playback: %d\n", err);
+    Serial.printf("  - ERROR: Failed to install I2S driver: %d\n", err);
     return;
   }
   
+  Serial.println("  - Setting I2S pins...");
   err = i2s_set_pin(i2s_port, &pin_config);
   if (err != ESP_OK) {
-    Serial.printf("ERROR: Failed to set I2S pins: %d\n", err);
+    Serial.printf("  - ERROR: Failed to set I2S pins: %d\n", err);
     return;
   }
   
   i2sInstalled = true;
-  Serial.println("I2S initialized for playback");
+  Serial.println("  - I2S initialized for playback");
 }
 
 // Initialize I2S for recording (microphone input)
 void initI2SRecording() {
+  Serial.println("  - Uninstalling existing I2S driver...");
+  
   // Stop any existing I2S if it was installed
   if (i2sInstalled) {
     i2s_driver_uninstall(i2s_port);
     i2sInstalled = false;
   }
+  
+  Serial.println("  - Creating I2S configuration for recording...");
   
   // I2S configuration for recording
   i2s_config_t i2s_config = {
@@ -174,20 +177,22 @@ void initI2SRecording() {
     .data_in_num = I2S_DIN
   };
   
+  Serial.println("  - Installing I2S driver for recording...");
   esp_err_t err = i2s_driver_install(i2s_port, &i2s_config, 0, NULL);
   if (err != ESP_OK) {
-    Serial.printf("ERROR: Failed to install I2S driver for recording: %d\n", err);
+    Serial.printf("  - ERROR: Failed to install I2S driver: %d\n", err);
     return;
   }
   
+  Serial.println("  - Setting I2S pins for recording...");
   err = i2s_set_pin(i2s_port, &pin_config);
   if (err != ESP_OK) {
-    Serial.printf("ERROR: Failed to set I2S pins: %d\n", err);
+    Serial.printf("  - ERROR: Failed to set I2S pins: %d\n", err);
     return;
   }
   
   i2sInstalled = true;
-  Serial.println("I2S initialized for recording");
+  Serial.println("  - I2S initialized for recording");
 }
 
 // Generate and play a beep tone
@@ -196,6 +201,11 @@ void playBeep() {
   
   // Generate sine wave for beep
   int16_t* beepBuffer = (int16_t*)malloc(SAMPLE_RATE / 10 * sizeof(int16_t));  // 100ms buffer
+  if (beepBuffer == NULL) {
+    Serial.println("ERROR: Failed to allocate beep buffer!");
+    return;
+  }
+  
   int beepSamples = SAMPLE_RATE / 10;
   
   // Generate sine wave

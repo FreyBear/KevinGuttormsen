@@ -172,8 +172,30 @@ Wire.begin(10, 11);  // SDA=11, SCL=10
 ## RGB Ring Lights
 
 - **7 programmable RGB LEDs** arranged in a ring
-- Addressable (likely WS2812B or similar)
-- Check specific GPIO pin for LED data control (typically GPIO 48 or similar on ESP32-S3)
+- **GPIO38:** LED data control pin (WS2812B addressable LEDs)
+- **Color Order:** GRB (Green, Red, Blue) - NOT RGB
+  - When setting color 0xFF0000 (red), the LED displays as green
+  - When setting color 0x00FF00 (green), the LED displays as red
+  - Use `NEO_GRB + NEO_KHZ800` in Adafruit_NeoPixel initialization
+
+### Arduino Usage Example:
+```cpp
+#include <Adafruit_NeoPixel.h>
+
+#define LED_PIN 38
+#define NUM_LEDS 7
+
+Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+void setup() {
+  strip.begin();
+  strip.setBrightness(100);
+  
+  // Set LED 0 to red (appears as green due to GRB order)
+  strip.setPixelColor(0, 0xFF0000);
+  strip.show();
+}
+```
 
 ## Onboard Buttons
 
