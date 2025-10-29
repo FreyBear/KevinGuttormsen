@@ -57,24 +57,61 @@ To use this board with Arduino IDE, you **must** configure these settings:
 
 ## Available GPIO Pins for External Components
 
-### General Purpose I/O:
-- **GPIO3** to **GPIO11** - Available for buttons, sensors, etc.
+### Physically Accessible GPIO Pins (Dupont Connectors):
+The following pins are available on the side dupont/pin header connectors for external use:
+
+- **GPIO3 to GPIO11** - Fully available for buttons, sensors, etc. (when not using LCD/Camera)
 - **GPIO19, GPIO20** - Additional GPIOs
-- **EXIO1 to EXIO3** - Extended I/O pins
+- **EXIO1 to EXIO3** - Extended I/O pins (via TCA9555 I2C expander)
+- **3.3V, 5V, GND** - Power pins
+
+### LCD Interface Pins (optional FPC connector - NOT USED in Kevin project):
+These pins are reserved for the optional LCD screen. Since Kevin doesn't use a screen, **GPIO3-9 are free for buttons/sensors**.
+
+- **GPIO3:** LCD_CS (Chip Select)
+- **GPIO4:** LCD_SCK (SPI Clock)
+- **GPIO5:** LCD_BL (Backlight)
+- **GPIO6:** LCD_SDA3
+- **GPIO7:** LCD_DC (Data/Command) or LCD_SDA2
+- **GPIO8:** LCD_MISO or LCD_SDA1
+- **GPIO9:** LCD_MOSI or LCD_SDA0
+- **EXIO1:** LCD_RST (Reset)
+- **GPIO10, GPIO11:** Touch screen I2C (shared with main I2C bus)
+
+### Camera Interface Pins (optional 24-pin connector - NOT USED in Kevin project):
+These pins are reserved for the optional camera module. Since Kevin doesn't use a camera, some are available:
+
+- **GPIO1:** CAM_HREF - Can be used for other purposes
+- **GPIO2:** CAM_D0 - Can be used for other purposes
+- **GPIO17:** CAM_D1 - Can be used for other purposes
+- **GPIO18:** CAM_D2 ⚠️ (Can cause crashes if used without camera - avoid this pin)
+- **GPIO39:** CAM_D3 - Can be used for other purposes
+- **GPIO45:** CAM_D4 - Can be used for other purposes
+- **GPIO46:** CAM_D5 - Can be used for other purposes
+- **GPIO47:** CAM_D6 - Can be used for other purposes
+- **GPIO48:** CAM_D7 - Can be used for other purposes
+- **GPIO19/GPIO44:** CAM_PCLK (selectable via EXIO7)
+- **GPIO20/GPIO43:** CAM_XCLK (selectable via EXIO7)
 
 ### Reserved/In-Use Pins (Do NOT use for other purposes):
-- **GPIO10, GPIO11** - I2C (SCL, SDA) for accelerometer or other I2C devices
+- **GPIO10, GPIO11** - I2C (SCL, SDA) - Main I2C bus for all I2C devices
 - **GPIO12-16** - I2S Audio (MCLK, SCLK, LRCK, DOUT, DIN)
+- **GPIO38** - RGB LED ring control (WS2812B)
 - **GPIO40-42** - SD Card (CLK, CMD, DATA)
 - **EXIO9** - PA_EN (Speaker amplifier enable)
 
-### Recommended Pin Assignments for Kevin Project:
+### Kevin Project Pin Assignments (no LCD, no Camera):
+**Accessible via dupont connectors:**
 - **GPIO3** - Left leg button (INPUT_PULLUP)
 - **GPIO4** - Right leg button (INPUT_PULLUP)
 - **GPIO5** - Left wing button (INPUT_PULLUP)
 - **GPIO6** - Right wing button (INPUT_PULLUP)
 - **GPIO7** - Beak button (INPUT_PULLUP)
+- **GPIO8** - Available for future expansion
+- **GPIO9** - Available for future expansion
 - **GPIO0** - Mode switching button (INPUT_PULLUP) (or use BOOT button)
+
+**I2C bus (shared):**
 - **GPIO10, GPIO11** - MPU-6050 accelerometer (I2C_SCL, I2C_SDA)
 
 ### Power Pins:
@@ -178,6 +215,9 @@ Wire.begin(10, 11);  // SDA=11, SCL=10
   - When setting color 0x00FF00 (green), the LED displays as red
   - Use `NEO_GRB + NEO_KHZ800` in Adafruit_NeoPixel initialization
 
+### Note:
+The RGB LED pin (GPIO38) is not listed in the official pinout tables but is shown in the board's pinout diagram image.
+
 ### Arduino Usage Example:
 ```cpp
 #include <Adafruit_NeoPixel.h>
@@ -212,6 +252,7 @@ void setup() {
 
 ## Additional Resources
 
+- [Official Spotpear Documentation](https://spotpear.com/index.php/wiki/ESP32-S3-AI-AUDIO-BOX-deepseek-xiaozhi-camera-doubao.html) - Complete user guide with pinout diagrams
 - [ESP32-S3 Technical Reference Manual](https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf)
 - [ESP32-S3 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf)
 - [Arduino ESP32 Documentation](https://docs.espressif.com/projects/arduino-esp32/en/latest/)
